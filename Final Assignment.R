@@ -5,6 +5,8 @@ library(glmnet)            # For fitting generalized linear models
 library(ggplot2)           # For data visualization
 library(clusterProfiler)   # For pathway enrichment analysis
 library(factoextra)        # For extracting and visualizing the results of multivariate data analyses
+library(AnnotationDbi)     # For mapping gene symbols to Entrez IDs
+library(org.Hs.eg.db)      # For mapping gene symbols to Entrez IDs
 
 # Set directory (modify as needed)
 path  = "C:/Users/Nelso/OneDrive/UCD/Bio Principles/R"            # Change this to your own directory
@@ -39,12 +41,31 @@ dds <- DESeqDataSetFromMatrix(countData = countData, colData = DataFrame(metadat
 # DESeq2 normalization and obtaining differentially expressed genes
 dds <- DESeq(dds)                                   # Runs DESeq2 normalization
 res <- results(dds, contrast = c("erbb2_amplified", "TRUE", "FALSE")) # Extracts results for the specified contrast
-resOrdered <- res[order(res$log2FoldChange, decreasing = TRUE),] # Orders results by log2 fold change
-top10_genes <- head(resOrdered, 10)                 # Extracts top 10 differentially expressed genes
+resOrdered <- res[order(res$padj), ]                # Most significantly differentially expressed genes
+top10 <- head(resOrdered, 10)                       # Extracts top 10 significantly differentially expressed genes
+resOrdered_up <- res[order(res$log2FoldChange, decreasing = TRUE),] # Orders results in decreasing order by log2 fold change
+top10_genes_up <- head(resOrdered_up, 10)                 # Extracts top 10 upregulated differentially expressed genes
+resOrdered_down <- res[order(res$log2FoldChange, decreasing = FALSE),] # Orders results in increasing order by log2 fold change
+top10_genes_down <- head(resOrdered_down, 10)               # Extracts top 10 downregulated differentially expressed genes
+
+## Save DESeq2 result
+write.csv(top10, "top10_mostsignificant.csv")
+write.csv(top10_genes_up, "top10_upregulated.csv")
+write.csv(top10_genes_down, "top10_downregulated.csv")
+
 
 # Pathway Enrichment Analysis
-entrez_ids <- rownames(resOrdered)[which(resOrdered$padj < 0.05)] # Extracts Entrez IDs of significant genes
+gene_symbols <- rownames(resOrdered)[which(resOrdered$padj < 0.05)] # Extracts Entrez IDs of significant genes
+entrez_ids <- mapIds(org.Hs.eg.db,           # Map gene symbols to Entrez IDs
+                     keys = gene_symbols,
+                     column = "ENTREZID",
+                     keytype = "SYMBOL",
+                     multiVals = "first")
+entrez_ids <- entrez_ids[!is.na(entrez_ids)] # Clean up NA values that result from genes that could not be mapped
 enrichResult <- enrichKEGG(gene = entrez_ids, organism = 'hsa', pvalueCutoff = 0.05) # Performs KEGG pathway enrichment analysis
+
+## Save Pathway Enrichment Result
+write.csv(enrichResult, "PathwayEnrichmentResult.csv")
 
 # PCA Plot
 vsd <- vst(dds, blind = FALSE)                      # Performs variance stabilizing transformation
@@ -56,9 +77,11 @@ clusters <- cutree(sampleClustering, k = 5)         # Cuts the dendrogram to cre
 pcaData$cluster <- factor(clusters)                 # Adds cluster assignments to PCA data
 ggplot(pcaData, aes(x = PC1, y = PC2, color = cluster)) + geom_point() + theme_minimal() + ggtitle("PCA Plot with Clustering") # Plots PCA with clusters
 
+
 # Differential Expression Analysis Between Clusters
 dds$cluster <- factor(clusters)                     # Adds cluster information to DESeq2 object
 design(dds) <- formula(~ cluster)                   # Updates design formula for differential expression analysis
 dds <- DESeq(dds)                                   # Runs DESeq2 with new design
 resClusterComparison <- results(dds, contrast=c("cluster", "1", "2")) # Extracts differential expression results for cluster comparison
 top_genes_cluster <- head(resClusterComparison[order(resClusterComparison$pvalue), ]) # Extracts top genes based on p-value in cluster comparison
+top_genes_cluster
