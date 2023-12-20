@@ -7,7 +7,10 @@ library(clusterProfiler)   # For pathway enrichment analysis
 library(factoextra)        # For extracting and visualizing the results of multivariate data analyses
 
 # Set directory (modify as needed)
-# Example: setwd("/path/to/your/data")
+path  = "C:/Users/Nelso/OneDrive/UCD/Bio Principles/R"            # Change this to your own directory
+file_name = "brca_tcga_pan_can_atlas_2018.tar.gz"                 # Enter file name
+untar(file_name)                                                  # Extract the files into folders
+setwd(paste(getwd() , "/brca_tcga_pan_can_atlas_2018", sep = "")) # change directory to the extracted folders
 
 # Reading the data files
 clinical <- read.delim("data_clinical_patient.txt") # Reads patient clinical data into 'clinical'
@@ -56,6 +59,6 @@ ggplot(pcaData, aes(x = PC1, y = PC2, color = cluster)) + geom_point() + theme_m
 # Differential Expression Analysis Between Clusters
 dds$cluster <- factor(clusters)                     # Adds cluster information to DESeq2 object
 design(dds) <- formula(~ cluster)                   # Updates design formula for differential expression analysis
-dds <- DESeq(dds)                                  # Runs DESeq2 with new design
+dds <- DESeq(dds)                                   # Runs DESeq2 with new design
 resClusterComparison <- results(dds, contrast=c("cluster", "1", "2")) # Extracts differential expression results for cluster comparison
 top_genes_cluster <- head(resClusterComparison[order(resClusterComparison$pvalue), ]) # Extracts top genes based on p-value in cluster comparison
