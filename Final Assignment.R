@@ -84,4 +84,6 @@ design(dds) <- formula(~ cluster)                   # Updates design formula for
 dds <- DESeq(dds)                                   # Runs DESeq2 with new design
 resClusterComparison <- results(dds, contrast=c("cluster", "1", "2")) # Extracts differential expression results for cluster comparison
 top_genes_cluster <- head(resClusterComparison[order(resClusterComparison$pvalue), ]) # Extracts top genes based on p-value in cluster comparison
-top_genes_cluster
+
+## Save Differential Expression Analysis Between Clusters Result
+write.csv(top_genes_cluster, "topgenescluster.csv")
